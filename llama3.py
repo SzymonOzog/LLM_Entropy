@@ -56,6 +56,8 @@ class LlamaEvaluator:
     def evaluate_benchmark(self, benchmark_data):
         correct = 0
         max_length = 5000
+        correct_entropy = []
+        incorrect_entropy = []
         
         for i, example in enumerate(tqdm(benchmark_data)):
             prompt = self.n_shot_encode(benchmark_data, example)
@@ -83,14 +85,21 @@ class LlamaEvaluator:
                         break
                         
                     inputs = torch.cat([inputs, next_token.unsqueeze(0)], dim=1)
-
+            entropy = entropy/num_generated
             generated_answer = self.tokenizer.decode(generated_tokens, skip_special_tokens=True) 
             reference_answer = example["answer"]
             if extract_ans(generated_answer) == extract_ans(reference_answer):
                 correct+=1
+                correct_entropy.append(entropy)
+            else:
+                incorrect_entropy.append(entropy)
             
             if (i+1) % 10 == 0:
                 print(f"\nCurrent accuracy: {correct/(i+1):.2%} ({correct}/{i+1})")
+                if len(correct_entropy) > 0:
+                    print("correct_entropy", np.mean(correct_entropy))
+                if len(incorrect_entropy) > 0:
+                    print("incorrect_entropy", np.mean(incorrect_entropy))
         
         return correct/len(benchmark_data)
 
